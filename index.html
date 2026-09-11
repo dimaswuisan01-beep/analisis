@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikasi Analisis Asesmen & Rekapitulasi Pembelajaran</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Google Fonts & Chart.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+    }
+    
+    /* Subtle Background Grid Pattern */
+    .bg-grid-pattern {
+      background-image: radial-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .dark .bg-grid-pattern {
+      background-image: radial-gradient(rgba(51, 65, 85, 0.4) 1px, transparent 1px);
+    }
+
+    /* Custom 3D & Elevation Buttons */
+    .btn-3d {
+      transition: all 0.15s ease-in-out;
+      box-shadow: 0 4px 0 0 rgba(0,0,0,0.15);
+      position: relative;
+      top: 0;
+    }
+    .btn-3d:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0 0 rgba(0,0,0,0.2);
+    }
+    .btn-3d:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 0 rgba(0,0,0,0.2);
+    }
+
+    .btn-3d-blue {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: white;
+      box-shadow: 0 4px 0 0 #1e40af;
+    }
+    .btn-3d-green {
+      background: linear-gradient(135deg, #10b981, #047857);
+      color: white;
+      box-shadow: 0 4px 0 0 #065f46;
+    }
+    .btn-3d-purple {
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      color: white;
+      box-shadow: 0 4px 0 0 #5b21b6;
+    }
+    .btn-3d-red {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color: white;
+      box-shadow: 0 4px 0 0 #991b1b;
+    }
+    .btn-3d-theme {
+      background: linear-gradient(135deg, #64748b, #334155);
+      color: white;
+      box-shadow: 0 4px 0 0 #1e293b;
+    }
+
+    /* Sticky table header support */
+    .sticky-header th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    /* Print Stylesheets */
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+        font-size: 10pt;
+      }
+      .print-area {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200 bg-grid-pattern">
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- CONFIRMATION MODAL -->
+  <div id="modal-confirm" class="no-print fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 space-y-4">
+      <h3 id="confirm-modal-title" class="text-base font-extrabold text-slate-900 dark:text-white">Konfirmasi</h3>
+      <p id="confirm-modal-message" class="text-xs text-slate-600 dark:text-slate-300">Apakah Anda yakin?</p>
+      <div class="flex justify-end gap-3 pt-2">
+        <button id="confirm-btn-cancel" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition">Batal</button>
+        <button id="confirm-btn-ok" class="btn-3d btn-3d-red px-4 py-2 rounded-xl text-xs font-bold">Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP HEADER & ACTIONS -->
+  <header class="no-print sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base font-extrabold text-slate-900 dark:text-white leading-tight flex items-center gap-2">
+            Analisis Asesmen & Rekapitulasi
+            <span class="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Kurikulum Merdeka</span>
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Platform Analisis Nilai & Capaian Pembelajaran Interaktif</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button onclick="manualSaveData()" class="btn-3d btn-3d-green px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+          <span class="hidden sm:inline">Simpan Data</span>
+        </button>
+
+        <button id="btn-theme-toggle" onclick="toggleTheme()" class="btn-3d btn-3d-theme px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+          <span id="theme-icon">🌙</span>
+          <span id="theme-text" class="hidden sm:inline">Dark Mode</span>
+        </button>
+
+        <button onclick="confirmResetAll()" class="btn-3d btn-3d-red px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          <span class="hidden sm:inline">Reset</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- HERO BANNER -->
+    <section class="no-print relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 sm:p-8 text-white shadow-xl">
+      <div class="absolute -right-10 -bottom-10 opacity-20 pointer-events-none">
+        <svg width="320" height="320" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="100" r="80" stroke="white" stroke-width="12" stroke-dasharray="8 8"/>
+          <polygon points="100,30 130,80 70,80" fill="white"/>
+          <rect x="60" y="110" width="80" height="40" rx="10" fill="white"/>
+        </svg>
+      </div>
+      
+      <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div class="space-y-2 max-w-2xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-blue-100 border border-white/20">
+            <span>🎓 Modul Guru & Analisis Formatif / Sumatif</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-black tracking-tight leading-snug">
+            Olah Nilai & Asesmen Pembelajaran Lebih Mudah & Presisi
+          </h2>
+          <p class="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
+            Kelola matriks skor jawaban, hitung interval KKTP otomatis, hingga cetak rekapitulasi nilai per mata pelajaran maupun agregat seluruh mapel secara instan.
+          </p>
+        </div>
+
+        <div class="hidden lg:flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl shadow-lg">
+          <div class="w-12 h-12 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-black text-xl shadow-md">
+            📊
+          </div>
+          <div class="text-xs">
+            <div class="font-extrabold text-white text-sm">Otomatisasi KKTP</div>
+            <div class="text-blue-100 font-medium">Analisis Butir Soal & Daya Serap</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAHAP 1: PENGATURAN KELAS & DATA SISWA -->
+    <section class="no-print bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 transition-all">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+          </div>
+          <div>
+            <span class="bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-extrabold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wide">Tahap 1</span>
+            <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Pengaturan Kelas & Data Siswa</h2>
+          </div>
+        </div>
+      </div>
+
+      <div id="sec-siswa-body" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Nama Kelas / Rombel</label>
+            <input type="text" id="input-nama-kelas" value="Kelas VI A" onchange="updateClassInfo()" class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Jumlah Siswa</label>
+            <div class="flex gap-2">
+              <input type="number" id="input-jumlah-siswa" min="1" max="60" value="10" class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition">
+              <button onclick="applyStudentCount()" class="btn-3d btn-3d-blue px-4 py-2 rounded-xl text-xs font-bold">Terapkan</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Tahun Ajaran / Semester</label>
+            <input type="text" id="input-tahun-ajaran" value="2026/2027 - Genap" onchange="updateClassInfo()" class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Daftar Nama Siswa</label>
+          <div id="container-nama-siswa" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 max-h-56 overflow-y-auto p-3 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800">
+            <!-- Dynamic student inputs -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAHAP 2: NAVIGASI MAPEL & KKTP -->
+    <section class="no-print bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 transition-all">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+            </svg>
+          </div>
+          <div>
+            <span class="bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-extrabold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wide">Tahap 2</span>
+            <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Navigasi Mapel, Konfigurasi Soal & KKTP</h2>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Subject Tabs Navigation -->
+        <div class="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800" id="tabs-mapel-container">
+          <!-- Dynamic subject tabs injected here -->
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <span class="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Nama Mapel Aktif:</span>
+            <input type="text" id="input-edit-mapel-name" onchange="editActiveMapelName(this.value)" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-bold text-blue-600 dark:text-blue-400 focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+
+          <button onclick="addNewSubject()" class="btn-3d btn-3d-purple px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            + Tambah Mata Pelajaran
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+          <!-- Soal Config -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+              Jumlah Soal & Bobot (Mapel Aktif)
+            </h3>
+            <div class="grid grid-cols-3 gap-3">
+              <div class="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                <label class="block text-[11px] text-slate-500 dark:text-slate-400 font-bold mb-1">PG (Skor 1)</label>
+                <input type="number" id="input-pg-count" min="0" max="30" onchange="updateQuestionConfig()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-sm font-black text-center text-blue-600">
+              </div>
+              <div class="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                <label class="block text-[11px] text-slate-500 dark:text-slate-400 font-bold mb-1">Isian (Skor 2)</label>
+                <input type="number" id="input-isian-count" min="0" max="20" onchange="updateQuestionConfig()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-sm font-black text-center text-purple-600">
+              </div>
+              <div class="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                <label class="block text-[11px] text-slate-500 dark:text-slate-400 font-bold mb-1">Uraian (Skor 3)</label>
+                <input type="number" id="input-uraian-count" min="0" max="15" onchange="updateQuestionConfig()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-sm font-black text-center text-amber-600">
+              </div>
+            </div>
+            <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">
+              <span class="font-semibold">Total Skor Maksimal Pokok:</span>
+              <span id="text-skor-maksimal" class="font-black text-blue-600 dark:text-blue-400 text-base">0</span>
+            </div>
+          </div>
+
+          <!-- KKTP Config -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+              <span>Kriteria Ketercapaian (KKTP)</span>
+              <span class="text-xs font-semibold text-slate-400">Skala 0 - 100</span>
+            </h3>
+            <div class="flex items-center gap-4">
+              <div class="w-1/2">
+                <label class="block text-xs text-slate-500 dark:text-slate-400 font-bold mb-1">Ambang Batas Minimum (%)</label>
+                <input type="number" id="input-ambang-batas" min="40" max="95" value="70" onchange="updateKKTPIntervals()" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-extrabold text-center text-emerald-600">
+              </div>
+              <div class="w-1/2">
+                <label class="block text-xs text-slate-500 dark:text-slate-400 font-bold mb-1">Nilai Ambang KKTP</label>
+                <div id="text-nilai-ambang" class="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-lg px-3 py-1.5 text-sm font-black text-center">
+                  70.0
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-1.5 text-center text-xs pt-1">
+              <div class="bg-red-100/80 dark:bg-red-950/60 text-red-800 dark:text-red-300 p-2 rounded-xl border border-red-200 dark:border-red-800 shadow-xs">
+                <div class="font-bold text-[11px]">Kurang</div>
+                <div id="interval-kurang" class="text-[10px] font-semibold opacity-90">&lt; 70</div>
+              </div>
+              <div class="bg-yellow-100/80 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-300 p-2 rounded-xl border border-yellow-200 dark:border-yellow-800 shadow-xs">
+                <div class="font-bold text-[11px]">Cukup</div>
+                <div id="interval-cukup" class="text-[10px] font-semibold opacity-90">70 - 79</div>
+              </div>
+              <div class="bg-blue-100/80 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 p-2 rounded-xl border border-blue-200 dark:border-blue-800 shadow-xs">
+                <div class="font-bold text-[11px]">Baik</div>
+                <div id="interval-baik" class="text-[10px] font-semibold opacity-90">80 - 89</div>
+              </div>
+              <div class="bg-emerald-100/80 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 p-2 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-xs">
+                <div class="font-bold text-[11px]">Sangat Baik</div>
+                <div id="interval-sangat-baik" class="text-[10px] font-semibold opacity-90">90 - 100</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAHAP 3: MATRIKS KOREKSI -->
+    <section class="no-print bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 transition-all">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div>
+            <span class="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-extrabold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wide">Tahap 3</span>
+            <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Matriks Koreksi Jawaban Siswa</h2>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-500 dark:text-slate-400 hidden xl:inline">
+            💡 Switch status tombol atau ubah dropdown skor Uraian
+          </span>
+          <button onclick="printMatrixReport()" class="btn-3d btn-3d-blue px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            Cetak Matriks Koreksi (Landscape)
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto max-h-[550px] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 shadow-inner">
+        <table class="w-full text-xs text-left text-slate-600 dark:text-slate-300 border-collapse">
+          <thead class="sticky-header bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-200 uppercase text-[11px] font-bold">
+            <tr id="matrix-header-row-1" class="border-b border-slate-200 dark:border-slate-800">
+              <!-- Header Row 1 -->
+            </tr>
+            <tr id="matrix-header-row-2" class="border-b border-slate-200 dark:border-slate-800">
+              <!-- Header Row 2 -->
+            </tr>
+          </thead>
+          <tbody id="matrix-body" class="divide-y divide-slate-200 dark:divide-slate-800">
+            <!-- Dynamic Matrix Rows -->
+          </tbody>
+          <tfoot id="matrix-foot" class="sticky bottom-0 bg-slate-200 dark:bg-slate-950 font-bold text-slate-800 dark:text-slate-100 border-t-2 border-slate-300 dark:border-slate-700 shadow-md">
+            <!-- Footer Summary Rows (Jumlah Benar & Persentase) -->
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="mt-6 flex justify-center">
+        <button onclick="processRecapAndScroll()" class="btn-3d btn-3d-green px-8 py-3 rounded-2xl text-sm font-extrabold flex items-center gap-2.5 shadow-xl">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          PROSES REKAP & TAMPILKAN ANALISIS
+        </button>
+      </div>
+    </section>
+
+    <!-- REKAPITULASI HASIL MAPEL AKTIF -->
+    <section id="section-rekapitulasi-hasil" class="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 scroll-mt-20">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+            </svg>
+          </div>
+          <div>
+            <span class="bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-extrabold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wide">Hasil Rekap</span>
+            <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Rekapitulasi Skor & Kategori KKTP (<span id="title-active-mapel-rekap">Pendidikan Pancasila</span>)</h2>
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead class="bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-200 uppercase font-bold text-[11px]">
+            <tr>
+              <th class="p-3 text-center border-b border-r border-slate-200 dark:border-slate-800 w-12">No</th>
+              <th class="p-3 border-b border-r border-slate-200 dark:border-slate-800 min-w-[160px]">Nama Siswa</th>
+              <th class="p-3 text-center border-b border-r border-slate-200 dark:border-slate-800">Skor PG</th>
+              <th class="p-3 text-center border-b border-r border-slate-200 dark:border-slate-800">Skor Isian</th>
+              <th class="p-3 text-center border-b border-r border-slate-200 dark:border-slate-800">Skor Uraian</th>
+              <th class="p-3 text-center border-b border-r border-slate-200 dark:border-slate-800 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-extrabold">Nilai Akhir (0-100)</th>
+              <th class="p-3 text-center border-b border-slate-200 dark:border-slate-800">Kategori KKTP</th>
+            </tr>
+          </thead>
+          <tbody id="rekap-table-body" class="divide-y divide-slate-200 dark:divide-slate-800">
+            <!-- Dynamic Recap Rows -->
+          </tbody>
+          <tfoot id="rekap-table-foot" class="bg-slate-100 dark:bg-slate-950 font-black text-slate-800 dark:text-slate-100 border-t-2 border-slate-300 dark:border-slate-700">
+            <!-- Dynamic Average Row -->
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- PENGATURAN ADMINISTRASI LAPORAN (DIPISAHKAN NAMA DAN NIP) -->
+      <div class="no-print mt-6 p-4 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
+          <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          Pengaturan Administrasi Laporan Cetak
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div class="md:col-span-1">
+            <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Titimangsa / Tanggal</label>
+            <input type="text" id="admin-tanggal" value="Surakarta, 20 Maret 2026" onchange="saveAdminConfig()" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Nama Kepala Sekolah</label>
+            <input type="text" id="admin-kepsek-nama" value="Sri Winarti, S.Pd. SD" onchange="saveAdminConfig()" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">NIP Kepala Sekolah</label>
+            <input type="text" id="admin-kepsek-nip" value="198404152008012012" onchange="saveAdminConfig()" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Nama Wali Kelas / Guru</label>
+            <input type="text" id="admin-guru-nama" value="Dimas Turangga Wuisan, S.Pd" onchange="saveAdminConfig()" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">NIP Wali Kelas / Guru</label>
+            <input type="text" id="admin-guru-nip" value="199111102020121008" onchange="saveAdminConfig()" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-2">
+          <button onclick="printActiveSubjectReport()" class="btn-3d btn-3d-blue px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            CETAK REKAP NILAI MAPEL AKTIF (Portrait)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAHAP 4: ANALISIS VISUAL & GRAFIK -->
+    <section class="no-print bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-6">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+            </svg>
+          </div>
+          <div>
+            <span class="bg-cyan-100 dark:bg-cyan-900/60 text-cyan-700 dark:text-cyan-300 font-extrabold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wide">Tahap 4</span>
+            <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Analisis Visual & Kinerja Siswa</h2>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="p-5 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-3 text-center">Distribusi Kategori KKTP Siswa</h3>
+          <div class="relative w-full h-60 flex items-center justify-center">
+            <canvas id="chart-kktp-distribution"></canvas>
+          </div>
+        </div>
+
+        <div class="p-5 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-3 text-center">Rata-Rata Daya Serap (%) per Bentuk Soal</h3>
+          <div class="relative w-full h-60 flex items-center justify-center">
+            <canvas id="chart-daya-serap"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Top 5 -->
+        <div class="p-5 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800/60">
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 mb-3 flex items-center gap-2">
+            <span>🏆</span> Peringkat Teratas (Top 5 Siswa)
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead>
+                <tr class="border-b border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold">
+                  <th class="py-1.5 px-2 text-center w-10">Rank</th>
+                  <th class="py-1.5 px-2">Nama Siswa</th>
+                  <th class="py-1.5 px-2 text-center">Nilai Akhir</th>
+                </tr>
+              </thead>
+              <tbody id="top-5-body" class="divide-y divide-emerald-100 dark:divide-emerald-900/40">
+                <!-- Top 5 Rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Bottom 5 -->
+        <div class="p-5 bg-rose-50/70 dark:bg-rose-950/30 rounded-2xl border border-rose-200 dark:border-rose-800/60">
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-rose-800 dark:text-rose-300 mb-3 flex items-center gap-2">
+            <span>⚠️</span> Perlu Bimbingan Khusus (Bottom 5 Siswa)
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead>
+                <tr class="border-b border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 font-bold">
+                  <th class="py-1.5 px-2 text-center w-10">Rank</th>
+                  <th class="py-1.5 px-2">Nama Siswa</th>
+                  <th class="py-1.5 px-2 text-center">Nilai Akhir</th>
+                </tr>
+              </thead>
+              <tbody id="bottom-5-body" class="divide-y divide-rose-100 dark:divide-rose-900/40">
+                <!-- Bottom 5 Rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Item Analysis Cards -->
+      <div class="p-5 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          Analisis Ketepatan Soal / Daya Serap Per Nomor
+        </h3>
+        <div id="item-analysis-container" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-2.5">
+          <!-- Item analysis cards injected -->
+        </div>
+      </div>
+    </section>
+
+    <!-- REKAPITULASI GABUNGAN MULTI-MAPEL BANNER -->
+    <section class="no-print relative overflow-hidden bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="absolute -left-10 -top-10 opacity-15 pointer-events-none">
+        <svg width="240" height="240" viewBox="0 0 100 100" fill="white">
+          <polygon points="50,10 90,90 10,90"/>
+        </svg>
+      </div>
+
+      <div class="relative z-10">
+        <h2 class="text-lg font-extrabold mb-1 flex items-center gap-2">
+          <span>✨</span> Rekapitulasi Gabungan Seluruh Mata Pelajaran
+        </h2>
+        <p class="text-xs text-purple-200">Hitung nilai akhir rata-rata akumulatif siswa dari seluruh mapel pilihan dan cetak laporan agregat.</p>
+      </div>
+      <button onclick="openMultiMapelModal()" class="relative z-10 btn-3d btn-3d-purple px-6 py-3 rounded-xl text-xs font-extrabold whitespace-nowrap flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 00-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+        Rekap Semua Mapel
+      </button>
+    </section>
+
+  </main>
+
+  <!-- MULTI MAPEL MODAL -->
+  <div id="modal-multi-mapel" class="no-print fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl p-6 space-y-4 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          📚 Rekapitulasi Agregat Multi-Mapel
+        </h3>
+        <button onclick="closeMultiMapelModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-xl">&times;</button>
+      </div>
+
+      <div class="space-y-4 overflow-y-auto flex-grow pr-1">
+        <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Pilih Mata Pelajaran Terlibat:</span>
+          <label class="flex items-center gap-2 text-xs font-bold text-blue-600 cursor-pointer">
+            <input type="checkbox" id="checkbox-select-all" onchange="toggleSelectAllSubjects(this.checked)" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            Pilih Semua Mapel
+          </label>
+        </div>
+
+        <div id="container-multi-checkboxes" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <!-- Dynamic checkables -->
+        </div>
+
+        <div class="flex justify-center pt-2">
+          <button onclick="generateMultiMapelReport()" class="btn-3d btn-3d-purple px-6 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2">
+            🚀 Hitung & Tampilkan Rekap Gabungan
+          </button>
+        </div>
+
+        <div id="multi-mapel-results-container" class="hidden space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex justify-between items-center">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Tabel Nilai Agregat Multi-Mapel</h4>
+            <button onclick="printMultiSubjectReport()" class="btn-3d btn-3d-blue px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+              Cetak Rekap Gabungan (Portrait)
+            </button>
+          </div>
+
+          <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+            <table class="w-full text-xs text-left border-collapse">
+              <thead class="bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-200 uppercase font-bold text-[11px]">
+                <tr id="multi-header-row">
+                  <!-- Dynamic multi headers -->
+                </tr>
+              </thead>
+              <tbody id="multi-body-rows" class="divide-y divide-slate-200 dark:divide-slate-800">
+                <!-- Dynamic multi rows -->
+              </tbody>
+              <tfoot id="multi-foot-rows" class="bg-slate-100 dark:bg-slate-950 font-black text-slate-800 dark:text-slate-100 border-t-2 border-slate-300 dark:border-slate-700">
+                <!-- Dynamic Multi-Mapel Average Row -->
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+        <button onclick="closeMultiMapelModal()" class="px-5 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC JS -->
+  <script>
+    const DEFAULT_SUBJECTS = [
+      "Pendidikan Pancasila",
+      "Bahasa Indonesia",
+      "Matematika",
+      "IPAS",
+      "PJOK",
+      "Seni Budaya",
+      "Bahasa Inggris"
+    ];
+
+    let appData = {
+      kelas: "Kelas VI A",
+      jumlahSiswa: 10,
+      tahunAjaran: "2026/2027 - Genap",
+      siswa: Array.from({ length: 10 }, (_, i) => `Siswa ${i + 1}`),
+      activeMapelIndex: 0,
+      admin: {
+        tanggal: "Surakarta, 20 Maret 2026",
+        kepsekNama: "Sri Winarti, S.Pd. SD",
+        kepsekNip: "198404152008012012",
+        guruNama: "Dimas Turangga Wuisan, S.Pd",
+        guruNip: "199111102020121008"
+      },
+      mapelList: DEFAULT_SUBJECTS.map(name => ({
+        name: name,
+        pgCount: 10,
+        isianCount: 5,
+        uraianCount: 5,
+        ambangBatasPercent: 70,
+        matrix: {} // studentIdx -> { pg: [], isian: [], uraian: [] }
+      }))
+    };
+
+    let chartKktp = null;
+    let chartDayaSerap = null;
+
+    const SAMPLE_NAMES = [
+      "Ahmad Fauzi", "Budi Santoso", "Citra Dewi", "Dian Sastro", "Eko Prasetyo",
+      "Fani Rahma", "Gilang Ramadhan", "Hany Puspita", "Indra Wijaya", "Joko Widodo"
+    ];
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgClass = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-blue-600';
+      toast.className = `${bgClass} text-white text-xs font-bold px-4 py-3 rounded-xl shadow-xl transition-all transform translate-y-2 opacity-0 flex items-center gap-2 pointer-events-auto`;
+      toast.innerHTML = `<span>${type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'}</span> <span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    let confirmCallback = null;
+    function showConfirm(title, message, onConfirm) {
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-message').textContent = message;
+      confirmCallback = onConfirm;
+      document.getElementById('modal-confirm').classList.remove('hidden');
+    }
+
+    document.getElementById('confirm-btn-cancel').onclick = () => {
+      document.getElementById('modal-confirm').classList.add('hidden');
+      confirmCallback = null;
+    };
+
+    document.getElementById('confirm-btn-ok').onclick = () => {
+      document.getElementById('modal-confirm').classList.add('hidden');
+      if (confirmCallback) confirmCallback();
+      confirmCallback = null;
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSavedData();
+      renderStudentInputs();
+      renderSubjectTabs();
+      initCharts();
+      loadActiveMapelUI();
+      processRecapAndAnalysis();
+    });
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      document.getElementById('theme-icon').textContent = isDark ? '☀️' : '🌙';
+      document.getElementById('theme-text').textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      localStorage.setItem('app_theme', isDark ? 'dark' : 'light');
+    }
+
+    function loadSavedData() {
+      const savedTheme = localStorage.getItem('app_theme');
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.getElementById('theme-icon').textContent = '☀️';
+        document.getElementById('theme-text').textContent = 'Light Mode';
+      }
+
+      const localStr = localStorage.getItem('analisis_asesmen_data');
+      if (localStr) {
+        try {
+          const parsed = JSON.parse(localStr);
+          if (parsed && parsed.mapelList && parsed.siswa) {
+            appData = parsed;
+          }
+        } catch(e) {
+          console.error("Gagal membaca data tersimpan:", e);
+        }
+      }
+
+      document.getElementById('input-nama-kelas').value = appData.kelas;
+      document.getElementById('input-jumlah-siswa').value = appData.jumlahSiswa;
+      document.getElementById('input-tahun-ajaran').value = appData.tahunAjaran;
+
+      // Admin config
+      if (!appData.admin) {
+        appData.admin = {
+          tanggal: "Surakarta, 20 Maret 2026",
+          kepsekNama: "Sri Winarti, S.Pd. SD",
+          kepsekNip: "198404152008012012",
+          guruNama: "Dimas Turangga Wuisan, S.Pd",
+          guruNip: "199111102020121008"
+        };
+      }
+      document.getElementById('admin-tanggal').value = appData.admin.tanggal || "Surakarta, 20 Maret 2026";
+      document.getElementById('admin-kepsek-nama').value = appData.admin.kepsekNama || "Sri Winarti, S.Pd. SD";
+      document.getElementById('admin-kepsek-nip').value = appData.admin.kepsekNip || "198404152008012012";
+      document.getElementById('admin-guru-nama').value = appData.admin.guruNama || "Dimas Turangga Wuisan, S.Pd";
+      document.getElementById('admin-guru-nip').value = appData.admin.guruNip || "199111102020121008";
+    }
+
+    function saveAdminConfig() {
+      appData.admin = {
+        tanggal: document.getElementById('admin-tanggal').value,
+        kepsekNama: document.getElementById('admin-kepsek-nama').value,
+        kepsekNip: document.getElementById('admin-kepsek-nip').value,
+        guruNama: document.getElementById('admin-guru-nama').value,
+        guruNip: document.getElementById('admin-guru-nip').value
+      };
+    }
+
+    function manualSaveData() {
+      saveAdminConfig();
+      localStorage.setItem('analisis_asesmen_data', JSON.stringify(appData));
+      showToast("Data berhasil disimpan secara lokal di browser!", "success");
+    }
+
+    function confirmResetAll() {
+      showConfirm("Reset Semua Data", "Apakah Anda yakin ingin mereset seluruh data kembali ke awal?", () => {
+        localStorage.removeItem('analisis_asesmen_data');
+        location.reload();
+      });
+    }
+
+    function updateClassInfo() {
+      appData.kelas = document.getElementById('input-nama-kelas').value;
+      appData.tahunAjaran = document.getElementById('input-tahun-ajaran').value;
+    }
+
+    function applyStudentCount() {
+      const newCount = parseInt(document.getElementById('input-jumlah-siswa').value) || 10;
+      appData.jumlahSiswa = newCount;
+
+      if (appData.siswa.length < newCount) {
+        for (let i = appData.siswa.length; i < newCount; i++) {
+          appData.siswa.push(SAMPLE_NAMES[i] || `Siswa ${i + 1}`);
+        }
+      } else if (appData.siswa.length > newCount) {
+        appData.siswa = appData.siswa.slice(0, newCount);
+      }
+
+      renderStudentInputs();
+      renderCorrectionMatrix();
+      processRecapAndAnalysis();
+      showToast(`Jumlah siswa diperbarui menjadi ${newCount} orang.`, 'info');
+    }
+
+    function renderStudentInputs() {
+      const container = document.getElementById('container-nama-siswa');
+      container.innerHTML = '';
+
+      appData.siswa.forEach((nama, idx) => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-1.5 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs';
+        div.innerHTML = `
+          <span class="text-[10px] font-bold text-slate-400 w-5">${idx + 1}.</span>
+          <input type="text" value="${nama}" onchange="updateStudentName(${idx}, this.value)" 
+            class="w-full bg-transparent text-xs font-semibold focus:outline-none focus:text-blue-600 dark:focus:text-blue-400">
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateStudentName(idx, val) {
+      appData.siswa[idx] = val || `Siswa ${idx + 1}`;
+      renderCorrectionMatrix();
+      processRecapAndAnalysis();
+    }
+
+    function renderSubjectTabs() {
+      const container = document.getElementById('tabs-mapel-container');
+      container.innerHTML = '';
+
+      appData.mapelList.forEach((m, idx) => {
+        const isActive = idx === appData.activeMapelIndex;
+        const btn = document.createElement('button');
+        btn.className = `px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${
+          isActive 
+            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
+            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+        }`;
+        
+        btn.innerHTML = `
+          <span>${m.name}</span>
+          ${appData.mapelList.length > 1 ? `<span onclick="deleteSubject(event, ${idx})" class="hover:text-red-300 font-bold ml-1 text-sm">&times;</span>` : ''}
+        `;
+        btn.onclick = () => switchSubject(idx);
+        container.appendChild(btn);
+      });
+    }
+
+    function switchSubject(idx) {
+      appData.activeMapelIndex = idx;
+      renderSubjectTabs();
+      loadActiveMapelUI();
+      processRecapAndAnalysis();
+    }
+
+    function addNewSubject() {
+      const inputName = prompt("Masukkan nama mata pelajaran baru:", "Mapel Baru");
+      if (inputName && inputName.trim()) {
+        const cleanName = inputName.trim();
+        appData.mapelList.push({
+          name: cleanName,
+          pgCount: 10,
+          isianCount: 5,
+          uraianCount: 5,
+          ambangBatasPercent: 70,
+          matrix: {}
+        });
+        appData.activeMapelIndex = appData.mapelList.length - 1;
+        renderSubjectTabs();
+        loadActiveMapelUI();
+        processRecapAndAnalysis();
+        showToast(`Mata pelajaran "${cleanName}" berhasil ditambahkan.`, 'success');
+      }
+    }
+
+    function deleteSubject(event, idx) {
+      event.stopPropagation();
+      if (appData.mapelList.length <= 1) {
+        showToast("Minimal harus ada 1 Mata Pelajaran!", 'error');
+        return;
+      }
+      showConfirm("Hapus Mapel", `Hapus mapel "${appData.mapelList[idx].name}"?`, () => {
+        appData.mapelList.splice(idx, 1);
+        if (appData.activeMapelIndex >= appData.mapelList.length) {
+          appData.activeMapelIndex = appData.mapelList.length - 1;
+        }
+        renderSubjectTabs();
+        loadActiveMapelUI();
+        processRecapAndAnalysis();
+        showToast("Mata pelajaran berhasil dihapus.", 'info');
+      });
+    }
+
+    function editActiveMapelName(newName) {
+      if (newName && newName.trim()) {
+        appData.mapelList[appData.activeMapelIndex].name = newName.trim();
+        renderSubjectTabs();
+        document.getElementById('title-active-mapel-rekap').textContent = newName.trim();
+      }
+    }
+
+    function loadActiveMapelUI() {
+      const mapel = appData.mapelList[appData.activeMapelIndex];
+      document.getElementById('input-edit-mapel-name').value = mapel.name;
+      document.getElementById('input-pg-count').value = mapel.pgCount;
+      document.getElementById('input-isian-count').value = mapel.isianCount;
+      document.getElementById('input-uraian-count').value = mapel.uraianCount;
+      document.getElementById('input-ambang-batas').value = mapel.ambangBatasPercent || 70;
+      document.getElementById('title-active-mapel-rekap').textContent = mapel.name;
+
+      calculateMaxScore();
+      updateKKTPIntervals();
+      renderCorrectionMatrix();
+    }
+
+    function updateQuestionConfig() {
+      const mapel = appData.mapelList[appData.activeMapelIndex];
+      mapel.pgCount = parseInt(document.getElementById('input-pg-count').value) || 0;
+      mapel.isianCount = parseInt(document.getElementById('input-isian-count').value) || 0;
+      mapel.uraianCount = parseInt(document.getElementById('input-uraian-count').value) || 0;
+
+      calculateMaxScore();
+      renderCorrectionMatrix();
+      processRecapAndAnalysis();
+    }
+
+    function calculateMaxScore() {
+      const mapel = appData.mapelList[appData.activeMapelIndex];
+      const maxScore = (mapel.pgCount * 1) + (mapel.isianCount * 2) + (mapel.uraianCount * 3);
+      document.getElementById('text-skor-maksimal').textContent = maxScore;
+      return maxScore;
+    }
+
+    function updateKKTPIntervals() {
+      const mapel = appData.mapelList[appData.activeMapelIndex];
+      const ambang = parseInt(document.getElementById('input-ambang-batas').value) || 70;
+      mapel.ambangBatasPercent = ambang;
+
+      document.getElementById('text-nilai-ambang').textContent = ambang.toFixed(1);
+      document.getElementById('interval-kurang').textContent = `< ${ambang}`;
+      document.getElementById('interval-cukup').textContent = `${ambang} - ${Math.min(ambang + 9, 89)}`;
+      document.getElementById('interval-baik').textContent = `${Math.min(ambang + 10, 90)} - 89`;
+      document.getElementById('interval-sangat-baik').textContent = `90 - 100`;
+
+      processRecapAndAnalysis();
+    }
+
+    function renderCorrectionMatrix() {
+      const mapel = appData.mapelList[appData.activeMapelIndex];
+      const head1 = document.getElementById('matrix-header-row-1');
+      const head2 = document.getElementById('matrix-header-row-2');
+      const tbody = document.getElementById('matrix-body');
+
+      head1.innerHTML = '';
+      head2.innerHTML = '';
+      tbody.innerHTML = '';
+
+      head1.innerHTML = `
+        <th rowspan="2" class="p-2.5 text-center border-r border-slate-200 dark:border-slate-800 w-10">No</th>
+        <th rowspan="2" class="p-2.5 border-r border-slate-200 dark:border-slate-800 min-w-[150px]">Nama Siswa</th>
+        ${mapel.pgCount > 0 ? `<th colspan="${mapel.pgCount}" class="p-1.5 text-center border-r border-b border-slate-200 dark:border-slate-800 bg-blue-100/70 dark:bg-blue-900/40 text-blue-900 dark:text-blue-200 font-extrabold">Pilihan Ganda (Skor 1)</th>` : ''}
+        ${mapel.isianCount > 0 ? `<th colspan="${mapel.isianCount}" class="p-1.5 text-center border-r border-b border-slate-200 dark:border-slate-800 bg-purple-100/70 dark:bg-purple-900/40 text-purple-900 dark:text-purple-200 font-extrabold">Isian Singkat (Skor 2)</th>` : ''}
+        ${mapel.uraianCount > 0 ? `<th colspan="${mapel.uraianCount}" class="p-1.5 text-center border-r border-b border-slate-200 dark:border-slate-800 bg-amber-100/70 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 font-extrabold">Uraian (Skor 0-3)</th>` : ''}
+        <th rowspan="2" class="p-2.5 text-center border-r border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-800">Total Skor</th>
+      `;
+
+      let h2Html = '';
+      for (let i = 1; i <= mapel.pgCount; i++) {
+        h2Html += `<th class="p-1 text-center w-8 border-r border-slate-200 dark:border-slate-800 bg-blue-50 dark:bg-blue-950/40">${i}</th>`;
+      }
+      for (let i = 1; i <= mapel.isianCount; i++) {
+        h2Html += `<th class="p-1 text-center w-8 border-r border-slate-200 dark:border-slate-800 bg-purple-50 dark:bg-purple-950/40">${i}</th>`;
+      }
+      for (let i = 1; i <= mapel.uraianCount; i++) {
+        h2Html += `<th class="p-1 text-center w-10 border-r border-slate-200 dark:border-slate-800 bg-amber-50 dark:bg-amber-950/40">${i}</th>`;
+      }
+      head2.innerHTML = h2Html;
+
+      if (!mapel.matrix) mapel.matrix = {};
+
+      appData.siswa.forEach((student, sIdx) => {
+        if (!mapel.matrix[sIdx]) {
+          mapel.matrix[sIdx] = {
+            pg: Array(mapel.pgCount).fill(1),
+            isian: Array(mapel.isianCount).fill(2),
+            uraian: Array(mapel.uraianCount).fill(3)
+          };
+        }
+        const sData = mapel.matrix[sIdx];
+
+        if (sData.pg.length < mapel.pgCount) sData.pg.push(...Array(mapel.pgCount - sData.pg.length).fill(1));
+        if (sData.isian.length < mapel.isianCount) sData.isian.push(...Array(mapel.isianCount - sData.isian.length).fill(2));
+        if (sData.uraian.length < mapel.uraianCount) sData.uraian.push(...Array(mapel.uraianCount - sData.uraian.length).fill(3));
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors";
+
+        let cellsHtml = `
+          <td class="p-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold">${sIdx + 1}</td>
+          <td class="p-2 border-r border-slate-200 dark:border-slate-800 font-medium">${student}</td>
+        `;
+
+        sData.pg.slice(0, mapel.pgCount).forEach((val, qIdx) => {
+          const isCorrect = val === 1;
+          cellsHtml += `
+            <td class="p-1 text-center border-r border-slate-200 dark:border-slate-800">
+              <button onclick="toggleMatrixScore(${sIdx}, 'pg', ${qIdx}, ${isCorrect ? 0 : 1})" 
+                class="w-6 h-6 rounded text-xs font-black transition ${
+                  isCorrect 
+                    ? 'bg-emerald-500 text-white shadow-xs hover:bg-emerald-600' 
+                    : 'bg-red-500 text-white opacity-40 hover:opacity-100'
+                }">
+                ${isCorrect ? 'V' : 'X'}
+              </button>
+            </td>
+          `;
+        });
+
+        sData.isian.slice(0, mapel.isianCount).forEach((val, qIdx) => {
+          const isCorrect = val === 2;
+          cellsHtml += `
+            <td class="p-1 text-center border-r border-slate-200 dark:border-slate-800">
+              <button onclick="toggleMatrixScore(${sIdx}, 'isian', ${qIdx}, ${isCorrect ? 0 : 2})" 
+                class="w-6 h-6 rounded text-xs font-black transition ${
+                  isCorrect 
+                    ? 'bg-purple-600 text-white shadow-xs hover:bg-purple-700' 
+                    : 'bg-red-500 text-white opacity-40 hover:opacity-100'
+                }">
+                ${isCorrect ? 'V' : 'X'}
+              </button>
+            </td>
+          `;
+        });
+
+        sData.uraian.slice(0, mapel.uraianCount).forEach((val, qIdx) => {
+          cellsHtml += `
+            <td class="p-1 text-center border-r border-slate-200 dark:border-slate-800">
+              <select onchange="toggleMatrixScore(${sIdx}, 'uraian', ${qIdx}, parseInt(this.value))" 
+                class="bg-amber-50 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 rounded px-1 py-0.5 text-xs font-bold text-amber-900 dark:text-amber-200 outline-none">
+                <option value="0" ${val === 0 ? 'selected' : ''}>0</option>
+                <option value="1" ${val === 1 ? 'selected' : ''}>1</option>
+                <option value="2" ${val === 2 ? 'selected' : ''}>2</option>
+                <option value="3" ${val === 3 ? 'selected' : ''}>3</option>
+              </select>
+            </td>
+          `;
+        });
+
+        const pgSum = sData.pg.slice(0, mapel.pgCount).reduce((a, b) => a + b, 0);
+        const isianSum = sData.isian.slice(0, mapel.isianCount).reduce((a, b) => a + b, 0);
+        const uraianSum = sData.uraian.slice(0, mapel.uraianCount).reduce((a, b) => a + b, 0);
+        const studentTotal = pgSum + isianSum + uraianSum;
+
+        cellsHtml += `
+          <td class="p-2 text-center border-r border-slate-200 dark:border-slate-800 font-extrabold text-blue-600 dark:text-blue-400">
+            ${studentTotal}
+          </td>
+        `;
+
+        tr.innerHTML = cellsHtml;
+        tbody.appendChild(tr);
+      });
+
+      renderMatrixFooter();
+    }
+
+    function toggleMatrixScore(sIdx, type, qIdx, newVal) {
+      const mapel = appData.mapelList[appData.activeMapelIndex];
+      mapel.matrix[sIdx][type][qIdx] = newVal;
+      renderCorrectionMatrix();
+    }
+
+    /* FOOTER TABEL MATRIKS KOREKSI: MENGHITUNG JUMLAH BENAR DAN PERSENTASE DI PALING BAWAH TABEL */
+    function renderMatrixFooter() {
+      const mapel = appData.mapelList[appData.activeMapelIndex];
+      const tfoot = document.getElementById('matrix-foot');
+      tfoot.innerHTML = '';
+
+      const numStudents = appData.siswa.length || 1;
+
+      // Row 1: Jumlah Benar / Total Skor Per Butir Soal
+      let rowHtml = `
+        <tr class="bg-slate-200 dark:bg-slate-950">
+          <td colspan="2" class="p-2 text-right border-r border-slate-300 dark:border-slate-700 uppercase font-black text-[10px]">
+            Jumlah Benar / Total Skor
+          </td>
+      `;
+
+      let totalRawSum = 0;
+
+      for (let i = 0; i < mapel.pgCount; i++) {
+        let count = 0;
+        appData.siswa.forEach((_, sIdx) => {
+          if (mapel.matrix[sIdx] && mapel.matrix[sIdx].pg[i] === 1) count++;
+        });
+        rowHtml += `<td class="p-1 text-center border-r border-slate-300 dark:border-slate-700 text-blue-700 dark:text-blue-300 font-extrabold">${count}</td>`;
+      }
+
+      for (let i = 0; i < mapel.isianCount; i++) {
+        let sum = 0;
+        appData.siswa.forEach((_, sIdx) => {
+          if (mapel.matrix[sIdx]) sum += (mapel.matrix[sIdx].isian[i] || 0);
+        });
+        rowHtml += `<td class="p-1 text-center border-r border-slate-300 dark:border-slate-700 text-purple-700 dark:text-purple-300 font-extrabold">${sum}</td>`;
+      }
+
+      for (let i = 0; i < mapel.uraianCount; i++) {
+        let sum = 0;
+        appData.siswa.forEach((_, sIdx) => {
+          if (mapel.matrix[sIdx]) sum += (mapel.matrix[sIdx].uraian[i] || 0);
+        });
+        rowHtml += `<td class="p-1 text-center border-r border-slate-300 dark:border-slate-700 text-amber-700 dark:text-amber-300 font-extrabold">${sum}</td>`;
+      }
+
+      // Hitung Total Skor Seluruh Siswa
+      appData.siswa.forEach((_, sIdx) => {
+        const sData = mapel.matrix[sIdx] || { pg: [], isian: [], uraian: [] };
+        totalRawSum += sData.pg.slice(0, mapel.pgCount).reduce((a, b) => a + b, 0);
+        totalRawSum += sData.isian.slice(0, mapel.isianCount).reduce((a, b) => a + b, 0);
+        totalRawSum += sData.uraian.slice(0, mapel.uraianCount).reduce((a, b) => a + b, 0);
+      });
+
+      rowHtml += `<td class="p-2 text-center font-black text-slate-900 dark:text-white">${totalRawSum}</td></tr>`;
+
+      // Row 2: Persentase Keberhasilan Per Soal (%)
+      rowHtml += `
+        <tr class="bg-slate-300 dark:bg-slate-900 border-t border-slate-400 dark:border-slate-700">
+          <td colspan="2" class="p-2 text-right border-r border-slate-300 dark:border-slate-700 uppercase font-black text-[10px] text-blue-800 dark:text-blue-300">
+            Persentase (%)
+          </td>
+      `;
+
+      for (let i = 0; i < mapel.pgCount; i++) {
+        let count = 0;
+        appData.siswa.forEach((_, sIdx) => {
+          if (mapel.matrix[sIdx] && mapel.matrix[sIdx].pg[i] === 1) count++;
+        });
+        const pct = Math.round((count / numStudents) * 100);
+        rowHtml += `<td class="p-1 text-center border-r border-slate-300 dark:border-slate-700 font-extrabold text-blue-800 dark:text-blue-300 text-[11px]">${pct}%</td>`;
+      }
+
+      for (let i = 0; i < mapel.isianCount; i++) {
+        let sum = 0;
+        appData.siswa.forEach((_, sIdx) => {
+          if (mapel.matrix[sIdx]) sum += (mapel.matrix[sIdx].isian[i] || 0);
+        });
+        const pct = Math.round((sum / (numStudents * 2)) * 100);
+        rowHtml += `<td class="p-1 text-center border-r border-slate-300 dark:border-slate-700 font-extrabold text-purple-800 dark:text-purple-300 text-[11px]">${pct}%</td>`;
+      }
+
+      for (let i = 0; i < mapel.uraianCount; i++) {
+        let sum = 0;
+        appData.siswa.forEach((_, sIdx) => {
+          if (mapel.matrix[sIdx]) sum += (mapel.matrix[sIdx].uraian[i] || 0);
+        });
+        const pct = Math.round((sum / (numStudents * 3)) * 100);
+        rowHtml += `<td class="p-1 text-center border-r border-slate-300 dark:border-slate-700 font-extrabold text-amber-800 dark:text-amber-300 text-[11px]">${pct}%</td>`;
+      }
+
+      const maxPossibleClassScore = ((mapel.pgCount * 1) + (mapel.isianCount * 2) + (mapel.uraianCount * 3)) * numStudents || 1;
+      const overallPct = Math.round((totalRawSum / maxPossibleClassScore) * 100);
+
+      rowHtml += `<td class="p-2 text-center font-extrabold text-emerald-700 dark:text-emerald-400 text-xs">${overallPct}%</td></tr>`;
+
+      tfoot.innerHTML = rowHtml;
+    }
+
+    function processRecapAndScroll() {
+      processRecapAndAnalysis();
+      const el = document.getElementById('section-rekapitulasi-hasil');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function getStudentCalculatedScores(mapel, sIdx) {
+      const sData = mapel.matrix[sIdx] || { pg: [], isian: [], uraian: [] };
+      const pg = sData.pg.slice(0, mapel.pgCount).reduce((a, b) => a + b, 0);
+      const isian = sData.isian.slice(0, mapel.isianCount).reduce((a, b) => a + b, 0);
+      const uraian = sData.uraian.slice(0, mapel.uraianCount).reduce((a, b) => a + b, 0);
+      const totalRaw = pg + isian + uraian;
+      const maxRaw = (mapel.pgCount * 1) + (mapel.isianCount * 2) + (mapel.uraianCount * 3) || 1;
+      
+      const finalScore = parseFloat(((totalRaw / maxRaw) * 100).toFixed(1));
+      const category = getKKTPCategory(finalScore, mapel.ambangBatasPercent || 70);
+
+      return { pg, isian, uraian, totalRaw, maxRaw, finalScore, category };
+    }
+
+    function getKKTPCategory(score, ambang) {
+      if (score < ambang) return { text: "Kurang", bg: "bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border border-red-200 dark:border-red-800" };
+      if (score < Math.min(ambang + 10, 90)) return { text: "Cukup", bg: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/80 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800" };
+      if (score < 90) return { text: "Baik", bg: "bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-800" };
+      return { text: "Sangat Baik", bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800" };
+    }
+
+    function processRecapAndAnalysis() {
+      const mapel = appData.mapelList[appData.activeMapelIndex];
+      const tbody = document.getElementById('rekap-table-body');
+      const tfoot = document.getElementById('rekap-table-foot');
+      tbody.innerHTML = '';
+      tfoot.innerHTML = '';
+
+      const studentResults = [];
+
+      appData.siswa.forEach((student, sIdx) => {
+        const res = getStudentCalculatedScores(mapel, sIdx);
+        studentResults.push({ name: student, ...res });
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors";
+        tr.innerHTML = `
+          <td class="p-2.5 text-center border-b border-r border-slate-200 dark:border-slate-800 font-bold">${sIdx + 1}</td>
+          <td class="p-2.5 border-b border-r border-slate-200 dark:border-slate-800 font-semibold">${student}</td>
+          <td class="p-2.5 text-center border-b border-r border-slate-200 dark:border-slate-800 font-medium">${res.pg}</td>
+          <td class="p-2.5 text-center border-b border-r border-slate-200 dark:border-slate-800 font-medium">${res.isian}</td>
+          <td class="p-2.5 text-center border-b border-r border-slate-200 dark:border-slate-800 font-medium">${res.uraian}</td>
+          <td class="p-2.5 text-center border-b border-r border-slate-200 dark:border-slate-800 font-extrabold text-blue-600 dark:text-blue-400 text-sm bg-blue-50/40 dark:bg-blue-950/20">${res.finalScore}</td>
+          <td class="p-2.5 text-center border-b border-slate-200 dark:border-slate-800">
+            <span class="px-2.5 py-1 rounded-lg text-xs font-bold inline-block ${res.category.bg}">
+              ${res.category.text}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // MENGHITUNG RATA-RATA DI PALING BAWAH TABEL REKAP NILAI MAPEL AKTIF
+      const numStudents = studentResults.length || 1;
+      const avgPg = (studentResults.reduce((a, b) => a + b.pg, 0) / numStudents).toFixed(1);
+      const avgIsian = (studentResults.reduce((a, b) => a + b.isian, 0) / numStudents).toFixed(1);
+      const avgUraian = (studentResults.reduce((a, b) => a + b.uraian, 0) / numStudents).toFixed(1);
+      const avgFinal = (studentResults.reduce((a, b) => a + b.finalScore, 0) / numStudents).toFixed(1);
+      const avgCategory = getKKTPCategory(parseFloat(avgFinal), mapel.ambangBatasPercent || 70);
+
+      tfoot.innerHTML = `
+        <tr class="bg-slate-200 dark:bg-slate-950 font-black">
+          <td colspan="2" class="p-3 text-right border-r border-slate-300 dark:border-slate-700 uppercase">Rata-Rata Kelas</td>
+          <td class="p-3 text-center border-r border-slate-300 dark:border-slate-700 text-blue-700 dark:text-blue-300 font-black">${avgPg}</td>
+          <td class="p-3 text-center border-r border-slate-300 dark:border-slate-700 text-purple-700 dark:text-purple-300 font-black">${avgIsian}</td>
+          <td class="p-3 text-center border-r border-slate-300 dark:border-slate-700 text-amber-700 dark:text-amber-300 font-black">${avgUraian}</td>
+          <td class="p-3 text-center border-r border-slate-300 dark:border-slate-700 text-blue-800 dark:text-blue-300 font-black text-sm bg-blue-100/50 dark:bg-blue-900/40">${avgFinal}</td>
+          <td class="p-3 text-center font-bold">
+            <span class="px-2.5 py-1 rounded-lg text-xs font-black inline-block ${avgCategory.bg}">
+              ${avgCategory.text}
+            </span>
+          </td>
+        </tr>
+      `;
+
+      updateCharts(mapel, studentResults);
+      updateRankings(studentResults);
+      updateItemAnalysis(mapel);
+    }
+
+    function initCharts() {
+      const ctxKktp = document.getElementById('chart-kktp-distribution').getContext('2d');
+      chartKktp = new Chart(ctxKktp, {
+        type: 'doughnut',
+        data: {
+          labels: ['Kurang', 'Cukup', 'Baik', 'Sangat Baik'],
+          datasets: [{
+            data: [0, 0, 0, 0],
+            backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+
+      const ctxDaya = document.getElementById('chart-daya-serap').getContext('2d');
+      chartDayaSerap = new Chart(ctxDaya, {
+        type: 'bar',
+        data: {
+          labels: ['Pilihan Ganda', 'Isian Singkat', 'Uraian'],
+          datasets: [{
+            label: 'Rata-Rata Daya Serap (%)',
+            data: [0, 0, 0],
+            backgroundColor: ['#3b82f6', '#8b5cf6', '#f59e0b'],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { min: 0, max: 100 } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function updateCharts(mapel, results) {
+      if (!chartKktp || !chartDayaSerap) return;
+
+      const dist = { 'Kurang': 0, 'Cukup': 0, 'Baik': 0, 'Sangat Baik': 0 };
+      results.forEach(r => dist[r.category.text]++);
+
+      chartKktp.data.datasets[0].data = [dist['Kurang'], dist['Cukup'], dist['Baik'], dist['Sangat Baik']];
+      chartKktp.update();
+
+      const numStudents = results.length || 1;
+      const maxPgTotal = mapel.pgCount * 1 * numStudents || 1;
+      const maxIsianTotal = mapel.isianCount * 2 * numStudents || 1;
+      const maxUraianTotal = mapel.uraianCount * 3 * numStudents || 1;
+
+      const sumPg = results.reduce((a, b) => a + b.pg, 0);
+      const sumIsian = results.reduce((a, b) => a + b.isian, 0);
+      const sumUraian = results.reduce((a, b) => a + b.uraian, 0);
+
+      const pgPct = parseFloat(((sumPg / maxPgTotal) * 100).toFixed(1));
+      const isianPct = parseFloat(((sumIsian / maxIsianTotal) * 100).toFixed(1));
+      const uraianPct = parseFloat(((sumUraian / maxUraianTotal) * 100).toFixed(1));
+
+      chartDayaSerap.data.datasets[0].data = [pgPct, isianPct, uraianPct];
+      chartDayaSerap.update();
+    }
+
+    function updateRankings(results) {
+      const sorted = [...results].sort((a, b) => b.finalScore - a.finalScore);
+
+      const top5Body = document.getElementById('top-5-body');
+      top5Body.innerHTML = '';
+      sorted.slice(0, 5).forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30";
+        tr.innerHTML = `
+          <td class="py-1.5 px-2 text-center font-bold text-emerald-700 dark:text-emerald-300">#${idx + 1}</td>
+          <td class="py-1.5 px-2 font-semibold text-slate-800 dark:text-slate-100">${r.name}</td>
+          <td class="py-1.5 px-2 text-center font-extrabold text-emerald-600 dark:text-emerald-400">${r.finalScore}</td>
+        `;
+        top5Body.appendChild(tr);
+      });
+
+      const bottom5Body = document.getElementById('bottom-5-body');
+      bottom5Body.innerHTML = '';
+      const bottomList = [...results].sort((a, b) => a.finalScore - b.finalScore).slice(0, 5);
+      bottomList.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-rose-100/50 dark:hover:bg-rose-900/30";
+        tr.innerHTML = `
+          <td class="py-1.5 px-2 text-center font-bold text-rose-700 dark:text-rose-300">#${idx + 1}</td>
+          <td class="py-1.5 px-2 font-semibold text-slate-800 dark:text-slate-100">${r.name}</td>
+          <td class="py-1.5 px-2 text-center font-extrabold text-rose-600 dark:text-rose-400">${r.finalScore}</td>
+        `;
+        bottom5Body.appendChild(tr);
+      });
+    }
+
+    function updateItemAnalysis(mapel) {
+      const container = document.getElementById('item-analysis-container');
+      container.innerHTML = '';
+
+      const numStudents = appData.siswa.length || 1;
+
+      // PG Items
+      for (let i = 0; i < mapel.pgCount; i++) {
+        let correctCount = 0;
+        appData.siswa.forEach((_, sIdx) => {
+          if (mapel.matrix[sIdx] && mapel.matrix[sIdx].pg[i] === 1) correctCount++;
+        });
+        const pct = Math.round((correctCount / numStudents) * 100);
+        addItemCard(container, `PG ${i + 1}`, pct, 'blue');
+      }
+
+      // Isian Items
+      for (let i = 0; i < mapel.isianCount; i++) {
+        let sum = 0;
+        appData.siswa.forEach((_, sIdx) => {
+          if (mapel.matrix[sIdx]) sum += (mapel.matrix[sIdx].isian[i] || 0);
+        });
+        const pct = Math.round((sum / (numStudents * 2)) * 100);
+        addItemCard(container, `Isian ${i + 1}`, pct, 'purple');
+      }
+
+      // Uraian Items
+      for (let i = 0; i < mapel.uraianCount; i++) {
+        let sum = 0;
+        appData.siswa.forEach((_, sIdx) => {
+          if (mapel.matrix[sIdx]) sum += (mapel.matrix[sIdx].uraian[i] || 0);
+        });
+        const pct = Math.round((sum / (numStudents * 3)) * 100);
+        addItemCard(container, `Uraian ${i + 1}`, pct, 'amber');
+      }
+    }
+
+    function addItemCard(container, label, pct, colorType) {
+      const card = document.createElement('div');
+      let statusColor = "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-300";
+      if (pct < 60) {
+        statusColor = "text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-950/50 dark:border-rose-800 dark:text-rose-300";
+      } else if (pct < 75) {
+        statusColor = "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-300";
+      }
+
+      card.className = `p-2 rounded-xl border text-center ${statusColor}`;
+      card.innerHTML = `
+        <div class="text-[10px] font-extrabold uppercase opacity-80">${label}</div>
+        <div class="text-sm font-black mt-0.5">${pct}%</div>
+        <div class="text-[9px] font-semibold mt-0.5 opacity-90">${pct >= 75 ? 'Sangat Baik' : pct >= 60 ? 'Cukup' : 'Perlu Evaluasi'}</div>
+      `;
+      container.appendChild(card);
+    }
+
+    /* MULTI-MAPEL MODAL & LOGIC */
+    function openMultiMapelModal() {
+      saveAdminConfig();
+      const container = document.getElementById('container-multi-checkboxes');
+      container.innerHTML = '';
+
+      appData.mapelList.forEach((m, idx) => {
+        const label = document.createElement('label');
+        label.className = 'flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/40 transition';
+        label.innerHTML = `
+          <input type="checkbox" value="${idx}" class="multi-mapel-cb rounded border-slate-300 text-purple-600 focus:ring-purple-500" checked>
+          <span class="truncate">${m.name}</span>
+        `;
+        container.appendChild(label);
+      });
+
+      document.getElementById('checkbox-select-all').checked = true;
+      document.getElementById('multi-mapel-results-container').classList.add('hidden');
+      document.getElementById('modal-multi-mapel').classList.remove('hidden');
+    }
+
+    function closeMultiMapelModal() {
+      document.getElementById('modal-multi-mapel').classList.add('hidden');
+    }
+
+    function toggleSelectAllSubjects(checked) {
+      document.querySelectorAll('.multi-mapel-cb').forEach(cb => cb.checked = checked);
+    }
+
+    function generateMultiMapelReport() {
+      const selectedIndices = Array.from(document.querySelectorAll('.multi-mapel-cb:checked')).map(cb => parseInt(cb.value));
+
+      if (selectedIndices.length === 0) {
+        showToast("Pilih minimal 1 mata pelajaran!", 'error');
+        return;
+      }
+
+      const selectedMapels = selectedIndices.map(idx => appData.mapelList[idx]);
+      const headerRow = document.getElementById('multi-header-row');
+      const bodyRows = document.getElementById('multi-body-rows');
+      const footRows = document.getElementById('multi-foot-rows');
+
+      headerRow.innerHTML = '';
+      bodyRows.innerHTML = '';
+      footRows.innerHTML = '';
+
+      let headerHtml = `
+        <th class="p-2.5 text-center border-b border-r border-slate-200 dark:border-slate-800 w-10">No</th>
+        <th class="p-2.5 border-b border-r border-slate-200 dark:border-slate-800 min-w-[150px]">Nama Siswa</th>
+      `;
+
+      selectedMapels.forEach(m => {
+        headerHtml += `<th class="p-2.5 text-center border-b border-r border-slate-200 dark:border-slate-800">${m.name}</th>`;
+      });
+
+      headerHtml += `<th class="p-2.5 text-center border-b border-slate-200 dark:border-slate-800 bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 font-extrabold">Rata-Rata Akhir</th>`;
+      headerRow.innerHTML = headerHtml;
+
+      const subjectSums = Array(selectedMapels.length).fill(0);
+      let globalOverallSum = 0;
+
+      appData.siswa.forEach((student, sIdx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors";
+
+        let rowHtml = `
+          <td class="p-2.5 text-center border-b border-r border-slate-200 dark:border-slate-800 font-bold">${sIdx + 1}</td>
+          <td class="p-2.5 border-b border-r border-slate-200 dark:border-slate-800 font-semibold">${student}</td>
+        `;
+
+        let studentTotalScore = 0;
+
+        selectedMapels.forEach((m, mIdx) => {
+          const res = getStudentCalculatedScores(m, sIdx);
+          studentTotalScore += res.finalScore;
+          subjectSums[mIdx] += res.finalScore;
+
+          rowHtml += `<td class="p-2.5 text-center border-b border-r border-slate-200 dark:border-slate-800 font-medium">${res.finalScore}</td>`;
+        });
+
+        const studentAvg = parseFloat((studentTotalScore / selectedMapels.length).toFixed(1));
+        globalOverallSum += studentAvg;
+
+        rowHtml += `
+          <td class="p-2.5 text-center border-b border-slate-200 dark:border-slate-800 font-extrabold text-purple-600 dark:text-purple-400 text-sm bg-purple-50/40 dark:bg-purple-950/20">
+            ${studentAvg}
+          </td>
+        `;
+
+        tr.innerHTML = rowHtml;
+        bodyRows.appendChild(tr);
+      });
+
+      // MENGHITUNG BARIS RATA-RATA DIBAGIAN PALING BAWAH TABEL REKAP GABUNGAN
+      const numStudents = appData.siswa.length || 1;
+      let footHtml = `
+        <tr class="bg-slate-200 dark:bg-slate-950 font-black">
+          <td colspan="2" class="p-3 text-right border-r border-slate-300 dark:border-slate-700 uppercase">Rata-Rata Kelas</td>
+      `;
+
+      selectedMapels.forEach((_, mIdx) => {
+        const mapelAvg = (subjectSums[mIdx] / numStudents).toFixed(1);
+        footHtml += `<td class="p-3 text-center border-r border-slate-300 dark:border-slate-700 text-blue-700 dark:text-blue-300 font-black">${mapelAvg}</td>`;
+      });
+
+      const globalAvg = (globalOverallSum / numStudents).toFixed(1);
+      footHtml += `<td class="p-3 text-center text-purple-800 dark:text-purple-300 font-black text-sm bg-purple-100/50 dark:bg-purple-900/40">${globalAvg}</td></tr>`;
+
+      footRows.innerHTML = footHtml;
+
+      document.getElementById('multi-mapel-results-container').classList.remove('hidden');
+    }
+
+    /* CETAK LAPORAN MATRIKS KOREKSI (LANDSCAPE) DENGAN KOLOM JUMLAH BENAR DAN PERSENTASE DI PALING BAWAH TABEL */
+    function printMatrixReport() {
+      saveAdminConfig();
+      const mapel = appData.mapelList[appData.activeMapelIndex];
+      const numStudents = appData.siswa.length || 1;
+
+      let tableHtml = `
+        <table style="width:100%; border-collapse:collapse; font-size:9pt; text-align:center;" border="1">
+          <thead>
+            <tr style="background:#f1f5f9; font-weight:bold;">
+              <th rowspan="2" style="padding:4px; width:30px;">No</th>
+              <th rowspan="2" style="padding:4px; width:150px; text-align:left;">Nama Siswa</th>
+              ${mapel.pgCount > 0 ? `<th colspan="${mapel.pgCount}">Pilihan Ganda (Skor 1)</th>` : ''}
+              ${mapel.isianCount > 0 ? `<th colspan="${mapel.isianCount}">Isian (Skor 2)</th>` : ''}
+              ${mapel.uraianCount > 0 ? `<th colspan="${mapel.uraianCount}">Uraian (Skor 0-3)</th>` : ''}
+              <th rowspan="2" style="padding:4px;">Total Skor</th>
+            </tr>
+            <tr style="background:#f8fafc;">
+      `;
+
+      for (let i = 1; i <= mapel.pgCount; i++) tableHtml += `<th style="padding:2px; width:22px;">${i}</th>`;
+      for (let i = 1; i <= mapel.isianCount; i++) tableHtml += `<th style="padding:2px; width:22px;">${i}</th>`;
+      for (let i = 1; i <= mapel.uraianCount; i++) tableHtml += `<th style="padding:2px; width:26px;">${i}</th>`;
+
+      tableHtml += `</tr></thead><tbody>`;
+
+      let totalRawSum = 0;
+
+      appData.siswa.forEach((student, sIdx) => {
+        const sData = mapel.matrix[sIdx] || { pg: [], isian: [], uraian: [] };
+        const pgSum = sData.pg.slice(0, mapel.pgCount).reduce((a, b) => a + b, 0);
+        const isianSum = sData.isian.slice(0, mapel.isianCount).reduce((a, b) => a + b, 0);
+        const uraianSum = sData.uraian.slice(0, mapel.uraianCount).reduce((a, b) => a + b, 0);
+        const total = pgSum + isianSum + uraianSum;
+        totalRawSum += total;
+
+        tableHtml += `
+          <tr>
+            <td style="padding:3px; text-align:center;">${sIdx + 1}</td>
+            <td style="padding:3px; text-align:left;">${student}</td>
+        `;
+
+        sData.pg.slice(0, mapel.pgCount).forEach(v => {
+          tableHtml += `<td style="padding:3px;">${v === 1 ? '1' : '0'}</td>`;
+        });
+        sData.isian.slice(0, mapel.isianCount).forEach(v => {
+          tableHtml += `<td style="padding:3px;">${v}</td>`;
+        });
+        sData.uraian.slice(0, mapel.uraianCount).forEach(v => {
+          tableHtml += `<td style="padding:3px;">${v}</td>`;
+        });
+
+        tableHtml += `<td style="padding:3px; font-weight:bold;">${total}</td></tr>`;
+      });
+
+      tableHtml += `</tbody><tfoot>`;
+
+      // Footer Row 1: Jumlah Benar
+      tableHtml += `<tr style="background:#e2e8f0; font-weight:bold;"><td colspan="2" style="text-align:right; padding:4px;">Jumlah Benar / Skor Total:</td>`;
+      for (let i = 0; i < mapel.pgCount; i++) {
+        let count = 0;
+        appData.siswa.forEach((_, sIdx) => { if (mapel.matrix[sIdx] && mapel.matrix[sIdx].pg[i] === 1) count++; });
+        tableHtml += `<td style="padding:3px;">${count}</td>`;
+      }
+      for (let i = 0; i < mapel.isianCount; i++) {
+        let sum = 0;
+        appData.siswa.forEach((_, sIdx) => { if (mapel.matrix[sIdx]) sum += (mapel.matrix[sIdx].isian[i] || 0); });
+        tableHtml += `<td style="padding:3px;">${sum}</td>`;
+      }
+      for (let i = 0; i < mapel.uraianCount; i++) {
+        let sum = 0;
+        appData.siswa.forEach((_, sIdx) => { if (mapel.matrix[sIdx]) sum += (mapel.matrix[sIdx].uraian[i] || 0); });
+        tableHtml += `<td style="padding:3px;">${sum}</td>`;
+      }
+      tableHtml += `<td style="padding:3px;">${totalRawSum}</td></tr>`;
+
+      // Footer Row 2: Persentase
+      tableHtml += `<tr style="background:#cbd5e1; font-weight:bold;"><td colspan="2" style="text-align:right; padding:4px;">Persentase (%):</td>`;
+      for (let i = 0; i < mapel.pgCount; i++) {
+        let count = 0;
+        appData.siswa.forEach((_, sIdx) => { if (mapel.matrix[sIdx] && mapel.matrix[sIdx].pg[i] === 1) count++; });
+        tableHtml += `<td style="padding:3px;">${Math.round((count / numStudents) * 100)}%</td>`;
+      }
+      for (let i = 0; i < mapel.isianCount; i++) {
+        let sum = 0;
+        appData.siswa.forEach((_, sIdx) => { if (mapel.matrix[sIdx]) sum += (mapel.matrix[sIdx].isian[i] || 0); });
+        tableHtml += `<td style="padding:3px;">${Math.round((sum / (numStudents * 2)) * 100)}%</td>`;
+      }
+      for (let i = 0; i < mapel.uraianCount; i++) {
+        let sum = 0;
+        appData.siswa.forEach((_, sIdx) => { if (mapel.matrix[sIdx]) sum += (mapel.matrix[sIdx].uraian[i] || 0); });
+        tableHtml += `<td style="padding:3px;">${Math.round((sum / (numStudents * 3)) * 100)}%</td>`;
+      }
+
+      const maxPossibleClassScore = ((mapel.pgCount * 1) + (mapel.isianCount * 2) + (mapel.uraianCount * 3)) * numStudents || 1;
+      const overallPct = Math.round((totalRawSum / maxPossibleClassScore) * 100);
+      tableHtml += `<td style="padding:3px;">${overallPct}%</td></tr></tfoot></table>`;
+
+      openPrintWindow(`Laporan Matriks Koreksi - ${mapel.name}`, tableHtml, 'landscape');
+    }
+
+    /* CETAK REKAP NILAI MAPEL AKTIF (PORTRAIT) DENGAN RATA-RATA DI BAWAH TABEL */
+    function printActiveSubjectReport() {
+      saveAdminConfig();
+      const mapel = appData.mapelList[appData.activeMapelIndex];
+      const numStudents = appData.siswa.length || 1;
+
+      let tableHtml = `
+        <table style="width:100%; border-collapse:collapse; font-size:10pt;" border="1">
+          <thead>
+            <tr style="background:#f1f5f9; font-weight:bold; text-align:center;">
+              <th style="padding:6px; width:35px;">No</th>
+              <th style="padding:6px; text-align:left;">Nama Siswa</th>
+              <th style="padding:6px;">Skor PG</th>
+              <th style="padding:6px;">Skor Isian</th>
+              <th style="padding:6px;">Skor Uraian</th>
+              <th style="padding:6px;">Nilai Akhir</th>
+              <th style="padding:6px;">Kategori KKTP</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      let sumPg = 0, sumIsian = 0, sumUraian = 0, sumFinal = 0;
+
+      appData.siswa.forEach((student, sIdx) => {
+        const res = getStudentCalculatedScores(mapel, sIdx);
+        sumPg += res.pg;
+        sumIsian += res.isian;
+        sumUraian += res.uraian;
+        sumFinal += res.finalScore;
+
+        tableHtml += `
+          <tr>
+            <td style="padding:5px; text-align:center;">${sIdx + 1}</td>
+            <td style="padding:5px;">${student}</td>
+            <td style="padding:5px; text-align:center;">${res.pg}</td>
+            <td style="padding:5px; text-align:center;">${res.isian}</td>
+            <td style="padding:5px; text-align:center;">${res.uraian}</td>
+            <td style="padding:5px; text-align:center; font-weight:bold;">${res.finalScore}</td>
+            <td style="padding:5px; text-align:center;">${res.category.text}</td>
+          </tr>
+        `;
+      });
+
+      const avgPg = (sumPg / numStudents).toFixed(1);
+      const avgIsian = (sumIsian / numStudents).toFixed(1);
+      const avgUraian = (sumUraian / numStudents).toFixed(1);
+      const avgFinal = (sumFinal / numStudents).toFixed(1);
+      const avgCategory = getKKTPCategory(parseFloat(avgFinal), mapel.ambangBatasPercent || 70);
+
+      tableHtml += `
+          </tbody>
+          <tfoot>
+            <tr style="background:#e2e8f0; font-weight:bold;">
+              <td colspan="2" style="padding:6px; text-align:right;">RATA-RATA KELAS:</td>
+              <td style="padding:6px; text-align:center;">${avgPg}</td>
+              <td style="padding:6px; text-align:center;">${avgIsian}</td>
+              <td style="padding:6px; text-align:center;">${avgUraian}</td>
+              <td style="padding:6px; text-align:center; font-weight:bold;">${avgFinal}</td>
+              <td style="padding:6px; text-align:center;">${avgCategory.text}</td>
+            </tr>
+          </tfoot>
+        </table>
+      `;
+
+      openPrintWindow(`Rekapitulasi Nilai - ${mapel.name}`, tableHtml, 'portrait');
+    }
+
+    /* CETAK REKAP GABUNGAN MULTI-MAPEL (PORTRAIT) DENGAN RATA-RATA DI BAWAH TABEL */
+    function printMultiSubjectReport() {
+      saveAdminConfig();
+      const selectedIndices = Array.from(document.querySelectorAll('.multi-mapel-cb:checked')).map(cb => parseInt(cb.value));
+      const selectedMapels = selectedIndices.map(idx => appData.mapelList[idx]);
+      const numStudents = appData.siswa.length || 1;
+
+      let tableHtml = `
+        <table style="width:100%; border-collapse:collapse; font-size:10pt;" border="1">
+          <thead>
+            <tr style="background:#f1f5f9; font-weight:bold; text-align:center;">
+              <th style="padding:6px; width:35px;">No</th>
+              <th style="padding:6px; text-align:left;">Nama Siswa</th>
+      `;
+
+      selectedMapels.forEach(m => {
+        tableHtml += `<th style="padding:6px;">${m.name}</th>`;
+      });
+
+      tableHtml += `<th style="padding:6px;">Rata-Rata</th></tr></thead><tbody>`;
+
+      const subjectSums = Array(selectedMapels.length).fill(0);
+      let globalOverallSum = 0;
+
+      appData.siswa.forEach((student, sIdx) => {
+        tableHtml += `
+          <tr>
+            <td style="padding:5px; text-align:center;">${sIdx + 1}</td>
+            <td style="padding:5px;">${student}</td>
+        `;
+
+        let studentTotal = 0;
+        selectedMapels.forEach((m, mIdx) => {
+          const res = getStudentCalculatedScores(m, sIdx);
+          studentTotal += res.finalScore;
+          subjectSums[mIdx] += res.finalScore;
+
+          tableHtml += `<td style="padding:5px; text-align:center;">${res.finalScore}</td>`;
+        });
+
+        const studentAvg = parseFloat((studentTotal / selectedMapels.length).toFixed(1));
+        globalOverallSum += studentAvg;
+
+        tableHtml += `<td style="padding:5px; text-align:center; font-weight:bold;">${studentAvg}</td></tr>`;
+      });
+
+      tableHtml += `</tbody><tfoot><tr style="background:#e2e8f0; font-weight:bold;"><td colspan="2" style="padding:6px; text-align:right;">RATA-RATA:</td>`;
+
+      selectedMapels.forEach((_, mIdx) => {
+        const mAvg = (subjectSums[mIdx] / numStudents).toFixed(1);
+        tableHtml += `<td style="padding:6px; text-align:center;">${mAvg}</td>`;
+      });
+
+      const gAvg = (globalOverallSum / numStudents).toFixed(1);
+      tableHtml += `<td style="padding:6px; text-align:center; font-weight:bold;">${gAvg}</td></tr></tfoot></table>`;
+
+      openPrintWindow(`Rekapitulasi Nilai Gabungan Seluruh Mapel`, tableHtml, 'portrait');
+    }
+
+    /* HELPER WINDOW CETAK DENGAN FORMAT TANDA TANGAN TERPISAH NAMA DAN NIP */
+    function openPrintWindow(title, tableContentHtml, orientation = 'portrait') {
+      const admin = appData.admin || {};
+      const win = window.open('', '_blank');
+
+      const printHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @page { size: ${orientation}; margin: 15mm; }
+            body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; color: #000; font-size: 10pt; }
+            .header-print { text-align: center; margin-bottom: 15px; border-b: 2px solid #000; padding-bottom: 8px; }
+            .header-print h2 { margin: 0; font-size: 14pt; text-transform: uppercase; }
+            .header-print p { margin: 2px 0; font-size: 10pt; }
+            .meta-info { margin-bottom: 12px; font-size: 9.5pt; display: flex; justify-block: space-between; }
+            .meta-info table { width: 100%; border: none; font-size: 9.5pt; }
+            .meta-info td { border: none; padding: 2px 0; }
+            .signature-section { margin-top: 30px; width: 100%; page-break-inside: avoid; }
+            .signature-section table { width: 100%; border: none; text-align: center; font-size: 10pt; }
+            .signature-section td { border: none; width: 50%; vertical-align: top; }
+            .sig-space { height: 60px; }
+          </style>
+        </head>
+        <body>
+          <div class="header-print">
+            <h2>LAPORAN ASESMEN & REKAPITULASI HASIL BELAJAR</h2>
+            <p><strong>${title}</strong></p>
+          </div>
+
+          <div class="meta-info">
+            <table>
+              <tr>
+                <td style="width: 15%;"><strong>Kelas / Rombel</strong></td>
+                <td style="width: 35%;">: ${appData.kelas}</td>
+                <td style="width: 18%;"><strong>Tahun Ajaran</strong></td>
+                <td style="width: 32%;">: ${appData.tahunAjaran}</td>
+              </tr>
+              <tr>
+                <td><strong>Jumlah Siswa</strong></td>
+                <td>: ${appData.siswa.length} Orang</td>
+                <td><strong>Mata Pelajaran</strong></td>
+                <td>: ${appData.mapelList[appData.activeMapelIndex].name}</td>
+              </tr>
+            </table>
+          </div>
+
+          ${tableContentHtml}
+
+          <!-- SEKSI TANDA TANGAN DENGAN PERBAIKAN NAMA DAN NIP TERPISAH -->
+          <div class="signature-section">
+            <table>
+              <tr>
+                <td>
+                  <br>
+                  Mengetahui,<br>
+                  <strong>Kepala Sekolah</strong>
+                  <div class="sig-space"></div>
+                  <strong><u>${admin.kepsekNama || 'Sri Winarti, S.Pd. SD'}</u></strong><br>
+                  NIP. ${admin.kepsekNip || '-'}
+                </td>
+                <td>
+                  ${admin.tanggal || 'Surakarta, 20 Maret 2026'}<br>
+                  Guru Mata Pelajaran / Wali Kelas
+                  <div class="sig-space"></div>
+                  <strong><u>${admin.guruNama || 'Dimas Turangga Wuisan, S.Pd'}</u></strong><br>
+                  NIP. ${admin.guruNip || '-'}
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      win.document.write(printHtml);
+      win.document.close();
+    }
+  </script>
+</body>
+</html>
